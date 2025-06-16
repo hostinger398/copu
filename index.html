@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BP Currency Terminal</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #0ff;
+    }
+    .section {
+      margin-bottom: 25px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      background: #111;
+      color: #0f0;
+      border: 1px solid #0f0;
+    }
+    .log {
+      background: #111;
+      border: 1px dashed #0f0;
+      padding: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .highlight {
+      color: #ff0;
+    }
+  </style>
+</head>
+<body>
+  <h1>💀 BP TERMINAL</h1>
+
+  <div class="section">
+    <strong>💰 Balance:</strong> <span class="highlight" id="balance">0</span> BP<br>
+    <strong>🌾 Wheat Price:</strong> <span class="highlight" id="wheatPrice"></span> BP/kg
+  </div>
+
+  <div class="section">
+    <input type="number" id="buyAmount" placeholder="BP to spend on wheat">
+    <button onclick="buyWheat()">Buy Wheat</button>
+
+    <input type="number" id="sellKg" placeholder="KG of wheat to sell">
+    <button onclick="sellWheat()">Sell Wheat</button>
+  </div>
+
+  <div class="section">
+    <input type="number" id="transferAmount" placeholder="Amount to transfer">
+    <button onclick="generateCode()">Generate Transfer Code</button>
+    <div>🔐 Code: <span class="highlight" id="transferCode"></span></div>
+
+    <input type="text" id="redeemCode" placeholder="Enter code to redeem BP">
+    <button onclick="redeem()">Redeem Code</button>
+  </div>
+
+  <div class="section">
+    <strong>📈 Income Log:</strong>
+    <div class="log" id="incomeLog"></div>
+  </div>
+
+  <div class="section">
+    <strong>📉 Expense Log:</strong>
+    <div class="log" id="expenseLog"></div>
+  </div>
+
+  <script>
+    let data = JSON.parse(localStorage.getItem("bpData")) || {
+      balance: 3000,
+      wheat: 0,
+      incomeLog: [],
+      expenseLog: [],
+      codes: {}
+    };
+
+    let wheatPrice = randomPrice(140, 180);
+
+    function updateDisplay() {
+      document.getElementById("balance").textContent = data.balance.toFixed(2);
+      document.getElementById("wheatPrice").textContent = wheatPrice;
+      document.getElementById("incomeLog").innerHTML = data.incomeLog.map(e => "• " + e).join("<br>");
+      document.getElementById("expenseLog").innerHTML = data.expenseLog.map(e => "• " + e).join("<br>");
+    }
+
+    function save() {
+      localStorage.setItem("bpData", JSON.stringify(data));
+    }
+
+    function buyWheat() {
+      const amount = parseFloat(document.getElementById("buyAmount").value);
+      if (isNaN(amount) || amount <= 0 || amount > data.balance) return alert("Invalid BP");
+      const kg = Math.floor((amount / wheatPrice) * 100) / 100;
+      data.balance -= amount;
+      data.wheat += kg;
+      data.expenseLog.push(`Bought ${kg}kg wheat for ${amount} BP`);
+      save(); updateDisplay();
+      document.getElementById("buyAmount").value = "";
+    }
+
+    function sellWheat() {
+      const kg = parseFloat(document.getElementById("sellKg").value);
+      if (isNaN(kg) || kg <= 0 || kg > data.wheat) return alert("Invalid KG");
+      const gain = Math.floor((kg * wheatPrice) * 100) / 100;
+      data.wheat -= kg;
+      data.balance += gain;
+      data.incomeLog.push(`Sold ${kg}kg wheat for ${gain} BP`);
+      save(); updateDisplay();
+      document.getElementById("sellKg").value = "";
+    }
+
+    function generateCode() {
+      const amt = parseFloat(document.getElementById("transferAmount").value);
+      if (isNaN(amt) || amt <= 0 || amt > data.balance) return alert("Invalid amount");
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      data.codes[code] = amt;
+      data.balance -= amt;
+      data.expenseLog.push(`Created code ${code} for ${amt} BP`);
+      document.getElementById("transferCode").textContent = code;
+      save(); updateDisplay();
+      document.getElementById("transferAmount").value = "";
+    }
+
+    function redeem() {
+      const code = document.getElementById("redeemCode").value.trim().toUpperCase();
+      if (!data.codes[code]) return alert("Invalid or used code");
+      const amt = data.codes[code];
+      data.balance += amt;
+      data.incomeLog.push(`Redeemed ${amt} BP from code ${code}`);
+      delete data.codes[code];
+      save(); updateDisplay();
+      alert(`Received ${amt} BP`);
+      document.getElementById("redeemCode").value = "";
+    }
+
+    function randomPrice(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // Auto-update wheat price every 15s
+    setInterval(() => {
+      wheatPrice = randomPrice(140, 180);
+      updateDisplay();
+    }, 15000);
+
+    updateDisplay();
+  </script>
+</body>
+</html>
+
